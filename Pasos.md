@@ -22,3 +22,4 @@
     HECHO Pygame XV:  - Que jueguen dos IA
     HECHO Pygame XVI: - Sonidos para los rebotes
     HECHO - Música de fondo
+    HECHO -Añadir elección de modo de juego
