@@ -64,7 +64,7 @@ class Bola(pygame.sprite.Sprite):
         self.rect.centery = HEIGHT // 2
         self.speed = [0.5, -0.5]
 
-    def actualizar(self, time, pala_jug, pala_cpu, puntos):
+    def actualizar(self, time, pala_1, pala_2, puntos):
         """[summary] La linea 1 define el método, recibe el parámetro self (como siempre) y el parámetro time que es
         el tiempo transcurrido, más adelante lo explicamos.
 
@@ -104,7 +104,8 @@ class Bola(pygame.sprite.Sprite):
             time ([type]): [description]
             pala_jug([type]): [description]
         """
-        
+        original_speed = 0.75
+        low_speed = 0.40
         self.rect.centerx += int(self.speed[0] * time)
         self.rect.centery += int(self.speed[1] * time)
         if self.rect.left <= 0:
@@ -122,26 +123,26 @@ class Bola(pygame.sprite.Sprite):
             self.speed[1] = -self.speed[1]
             self.rect.centery += self.speed[1] * time
 
-        if pala_jug.inteligencia == 0: #Jugador VS IA
+        if pala_1.inteligencia == False and pala_2.inteligencia == True: #Jugador VS IA
         # Saber si un Sprite colisiona con otro es muy fácil en Python, basta con ejecutar el siguiente método:
-            if pygame.sprite.collide_rect(self, pala_jug):  #Solución PygameXIII 
+            if pygame.sprite.collide_rect(self, pala_1):  #Solución PygameXIII 
                 pygame.mixer.Channel(1).play(pygame.mixer.Sound('music/Pong1.ogg')) #sonido para las colisiones
-                self.speed[0] = -self.speed[0]*3           #Cuando la pelota vaya en dirección a la cpu irá el triple de rápido
+                self.speed[0] = original_speed #Cuando la pelota vaya en dirección a la cpu irá un 50% más rápido
                 self.rect.centerx += self.speed[0] * time
 
             # añadida colisión con pala de CPU
-            if pygame.sprite.collide_rect(self, pala_cpu):
+            if pygame.sprite.collide_rect(self, pala_2):
                 pygame.mixer.Channel(2).play(pygame.mixer.Sound('music/Pong2.ogg'))
-                self.speed[0] = -self.speed[0]/2        #Cuando la pelota va hacia el jugador va la mitad de rápido
+                self.speed[0] = -low_speed        #Cuando la pelota va hacia el jugador irá un 20% más lento
                 self.rect.centerx += self.speed[0] * time
         else:
-            if pygame.sprite.collide_rect(self, pala_jug): #Si está jugando IA VS IA no se aplica la ventaja del jugador
+            if pygame.sprite.collide_rect(self, pala_1): #Si está jugando IA VS IA o Jugador VS Jugador no se aplica la ventaja
                 pygame.mixer.Channel(1).play(pygame.mixer.Sound('music/Pong1.ogg'))
                 # loops=-1 for infinite playing
                 self.speed[0] = -self.speed[0]          
                 self.rect.centerx += self.speed[0] * time
 
-            if pygame.sprite.collide_rect(self, pala_cpu):
+            if pygame.sprite.collide_rect(self, pala_2):
                 pygame.mixer.Channel(2).play(pygame.mixer.Sound('music/Pong2.ogg')) 
                 self.speed[0] = -self.speed[0]          
                 self.rect.centerx += self.speed[0] * time
@@ -160,8 +161,13 @@ class Pala(pygame.sprite.Sprite):
 
     Otro cambio es la velocidad, como la pala del Pong solo se mueve en el eje y no definimos velocidad para el eje x.
     """
-    inteligencia = 0 #Indica si está usandola el jugador o la IA
+    inteligencia = None #Indica si está usandola el jugador o la IA, IA -> True, Jugador -> False
+    lado = None #Indica el lado de la pala
     def __init__(self, x):
+        if x == 30:
+            self.lado = 0
+        else:
+            self.lado = 1
         pygame.sprite.Sprite.__init__(self)
         self.image = load_image("images/pala.png")
         self.rect = self.image.get_rect()
@@ -171,6 +177,7 @@ class Pala(pygame.sprite.Sprite):
 
 
     def mover(self, time, keys):
+        self.inteligencia = False
         """
         Recibe los parámetros self y time como el método actualizar de la bola y además recibe el parámetro keys que
         luego definiremos y que es una lista con el valor booleano de las teclas pulsadas.
@@ -190,12 +197,20 @@ class Pala(pygame.sprite.Sprite):
         :param keys:
         :return:
         """
-        if self.rect.top >= 80:
-            if keys[K_UP]:
-                self.rect.centery -= self.speed * time
-        if self.rect.bottom <= HEIGHT:
-            if keys[K_DOWN]:
-                self.rect.centery += self.speed * time
+        if self.lado == 0:
+            if self.rect.top >= 80:
+                if keys[K_UP]:
+                    self.rect.centery -= self.speed * time
+            if self.rect.bottom <= HEIGHT:
+                if keys[K_DOWN]:
+                    self.rect.centery += self.speed * time
+        else:
+            if self.rect.top >= 80:
+                if keys[K_w]:
+                    self.rect.centery -= self.speed * time
+            if self.rect.bottom <= HEIGHT:
+                if keys[K_s]:
+                    self.rect.centery += self.speed * time
 
     def ia(self, time, ball):
         """
@@ -219,28 +234,28 @@ class Pala(pygame.sprite.Sprite):
         :param ball:
         :return:
         """
-        self.inteligencia = 1
-        if ball.speed[0] >= 0 and ball.rect.centerx >= WIDTH / 2:
-            if self.rect.centery < ball.rect.centery:   #Solución Pygame XIV
-                self.rect.centery += self.speed * time  #Hace un movimiento inverso y vuelve a por la pelota
-                self.rect.centery -= self.speed * time
-                self.rect.centery += self.speed * time
-            if self.rect.centery > ball.rect.centery:
-                self.rect.centery -= self.speed * time
-                self.rect.centery += self.speed * time
-                self.rect.centery -= self.speed * time
-
-    def ia2(self, time, ball): #IA para el lado del jugador
-        self.inteligencia = 1
-        if ball.speed[0] <= 0 and ball.rect.centerx <= WIDTH / 2:
-            if self.rect.centery < ball.rect.centery:   #Solución Pygame XIV
-                self.rect.centery += self.speed * time  #Hace un movimiento inverso y vuelve a por la pelota
-                self.rect.centery -= self.speed * time
-                self.rect.centery += self.speed * time
-            if self.rect.centery > ball.rect.centery:
-                self.rect.centery -= self.speed * time
-                self.rect.centery += self.speed * time
-                self.rect.centery -= self.speed * time
+        self.inteligencia = True
+        if self.lado == 1:
+            if ball.speed[0] >= 0 and ball.rect.centerx >= WIDTH / 2:
+                if self.rect.centery < ball.rect.centery:   #Solución Pygame XIV
+                    self.rect.centery += self.speed * time  #Hace un movimiento inverso y vuelve a por la pelota
+                    self.rect.centery -= self.speed * time
+                    self.rect.centery += self.speed * time
+                if self.rect.centery > ball.rect.centery:
+                    self.rect.centery -= self.speed * time
+                    self.rect.centery += self.speed * time
+                    self.rect.centery -= self.speed * time
+        if self.lado == 0:
+            if ball.speed[0] <= 0 and ball.rect.centerx <= WIDTH / 2: #Inteligencia para la pala izquierda en el modo IA VS IA
+                        if self.rect.centery < ball.rect.centery:   
+                            self.rect.centery += self.speed * time  
+                            self.rect.centery -= self.speed * time
+                            self.rect.centery += self.speed * time
+                        if self.rect.centery > ball.rect.centery:
+                            self.rect.centery -= self.speed * time
+                            self.rect.centery += self.speed * time
+                            self.rect.centery -= self.speed * time
+        
 
 
 
@@ -306,8 +321,8 @@ def main():
     pygame.display.set_caption("Pruebas Pygame")  # crear y abrir la ventana
     background_image = load_image('images/fondo_pong.png')  # cargar imagen
     bola = Bola()
-    pala_jug = Pala(30)
-    pala_cpu = Pala(WIDTH - 30)  # pala del ordenador a 30 píxeles del borde
+    pala_1 = Pala(30)
+    pala_2 = Pala(WIDTH - 30)  # pala del ordenador a 30 píxeles del borde
     comprobador = False
 
     # Ahora vamos a crear un reloj que controle el tiempo del juego, esto es
@@ -317,11 +332,13 @@ def main():
     puntos = [0, 0]
     Tk().wm_withdraw()
     while not comprobador:
-        eleccion = int(askinteger('Modo de juego', 'Elige el modo de juego introduciendo el número asociado: \n Jugador VS IA -> 1 \n IA VS IA -> 2 \n'))
-        if eleccion != 2 and eleccion != 1: 
+        eleccion = int(askinteger('Modo de juego', 'Elige el modo de juego introduciendo el número asociado: \n\n Jugador VS CPU -> 1 \n\n CPU VS CPU -> 2 \n\n Jugador VS Jugador -> 3'))
+        if eleccion != 2 and eleccion != 1 and eleccion != 3: 
             messagebox.showerror('Error', 'El número introducido no corresponde a ningun modo de juego, intentalo otra vez')
             comprobador = False
         else:
+            if eleccion == 3:
+                messagebox.showinfo(message="Pala del lado izquierdo:\n\n Subir pala ->Flecha Arriba \n\n Bajar Pala -> Flecha Abajo \n\n Pala del lado derecho: \n\n Subir pala ->W \n\n Bajar Pala -> S", title="Controles para el modo Jugador VS Jugador")
             comprobador = True
     pygame.mixer.init(channels=3)
     pygame.mixer.Channel(0).play(pygame.mixer.Sound('music/musica.ogg'),-1) #Musica de fondo
@@ -338,13 +355,16 @@ def main():
 
         # actualizar la posición de la bola, pala del jugador y de la cpu antes de repintar
         # actualizar también los puntos
-        puntos = bola.actualizar(time, pala_jug, pala_cpu, puntos)
+        puntos = bola.actualizar(time, pala_1, pala_2, puntos)
         if eleccion == 1:
-            pala_jug.mover(time, keys)
-            pala_cpu.ia(time, bola)
+            pala_1.mover(time, keys)
+            pala_2.ia(time, bola)
         if eleccion == 2:
-            pala_jug.ia2(time, bola)
-            pala_cpu.ia(time, bola)
+            pala_1.ia(time, bola)
+            pala_2.ia(time, bola)
+        if eleccion == 3:
+            pala_1.mover(time, keys)
+            pala_2.mover(time, keys)
 
         # Con la función texto() poner texto es muy fácil, vamos a utilizarla para mostrar nuestras puntuaciones,
         # añadimos las siguientes líneas en el bucle del juego:
@@ -362,8 +382,8 @@ def main():
         screen.blit(background_image, (0, 0))  # ponerla en la ventana, en la posición x=0,y=0
 
         screen.blit(bola.image, bola.rect)  # dibujar la bola
-        screen.blit(pala_jug.image, pala_jug.rect)  # dibujar pala del jugador
-        screen.blit(pala_cpu.image, pala_cpu.rect)  # dibujar pala de la cpu
+        screen.blit(pala_1.image, pala_1.rect)  # dibujar pala del lado izquierdo
+        screen.blit(pala_2.image, pala_2.rect)  # dibujar pala del lado derecho
 
         # Ponemos los sprites del marcador ¿por qué la pelota pasa por debajo?
         screen.blit(p_jug, p_jug_rect)
