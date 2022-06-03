@@ -23,3 +23,4 @@
     HECHO Pygame XVI: - Sonidos para los rebotes
     HECHO - Música de fondo
     HECHO -Añadir elección de modo de juego
+    HECHO -Añadir modo Jugador VS Jugador
